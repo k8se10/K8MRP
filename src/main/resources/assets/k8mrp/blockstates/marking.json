@@ -1,0 +1,169 @@
+{
+  "variants": {
+    "facing=north,variant=arrow_ahead": {
+      "model": "k8mrp:block/road/markings/arrow_ahead"
+    },
+    "facing=east,variant=arrow_ahead": {
+      "model": "k8mrp:block/road/markings/arrow_ahead",
+      "y": 90
+    },
+    "facing=south,variant=arrow_ahead": {
+      "model": "k8mrp:block/road/markings/arrow_ahead",
+      "y": 180
+    },
+    "facing=west,variant=arrow_ahead": {
+      "model": "k8mrp:block/road/markings/arrow_ahead",
+      "y": 270
+    },
+    "facing=north,variant=arrow_left": {
+      "model": "k8mrp:block/road/markings/arrow_left"
+    },
+    "facing=east,variant=arrow_left": {
+      "model": "k8mrp:block/road/markings/arrow_left",
+      "y": 90
+    },
+    "facing=south,variant=arrow_left": {
+      "model": "k8mrp:block/road/markings/arrow_left",
+      "y": 180
+    },
+    "facing=west,variant=arrow_left": {
+      "model": "k8mrp:block/road/markings/arrow_left",
+      "y": 270
+    },
+    "facing=north,variant=arrow_right": {
+      "model": "k8mrp:block/road/markings/arrow_right"
+    },
+    "facing=east,variant=arrow_right": {
+      "model": "k8mrp:block/road/markings/arrow_right",
+      "y": 90
+    },
+    "facing=south,variant=arrow_right": {
+      "model": "k8mrp:block/road/markings/arrow_right",
+      "y": 180
+    },
+    "facing=west,variant=arrow_right": {
+      "model": "k8mrp:block/road/markings/arrow_right",
+      "y": 270
+    },
+    "facing=north,variant=give_way_triangles": {
+      "model": "k8mrp:block/road/markings/give_way_triangles"
+    },
+    "facing=east,variant=give_way_triangles": {
+      "model": "k8mrp:block/road/markings/give_way_triangles",
+      "y": 90
+    },
+    "facing=south,variant=give_way_triangles": {
+      "model": "k8mrp:block/road/markings/give_way_triangles",
+      "y": 180
+    },
+    "facing=west,variant=give_way_triangles": {
+      "model": "k8mrp:block/road/markings/give_way_triangles",
+      "y": 270
+    },
+    "facing=north,variant=give_way_line": {
+      "model": "k8mrp:block/road/markings/give_way_line"
+    },
+    "facing=east,variant=give_way_line": {
+      "model": "k8mrp:block/road/markings/give_way_line",
+      "y": 90
+    },
+    "facing=south,variant=give_way_line": {
+      "model": "k8mrp:block/road/markings/give_way_line",
+      "y": 180
+    },
+    "facing=west,variant=give_way_line": {
+      "model": "k8mrp:block/road/markings/give_way_line",
+      "y": 270
+    },
+    "facing=north,variant=stop_line": {
+      "model": "k8mrp:block/road/markings/stop_line"
+    },
+    "facing=east,variant=stop_line": {
+      "model": "k8mrp:block/road/markings/stop_line",
+      "y": 90
+    },
+    "facing=south,variant=stop_line": {
+      "model": "k8mrp:block/road/markings/stop_line",
+      "y": 180
+    },
+    "facing=west,variant=stop_line": {
+      "model": "k8mrp:block/road/markings/stop_line",
+      "y": 270
+    },
+    "facing=north,variant=round_20": {
+      "model": "k8mrp:block/road/markings/round_20"
+    },
+    "facing=east,variant=round_20": {
+      "model": "k8mrp:block/road/markings/round_20",
+      "y": 90
+    },
+    "facing=south,variant=round_20": {
+      "model": "k8mrp:block/road/markings/round_20",
+      "y": 180
+    },
+    "facing=west,variant=round_20": {
+      "model": "k8mrp:block/road/markings/round_20",
+      "y": 270
+    },
+    "facing=north,variant=round_30": {
+      "model": "k8mrp:block/road/markings/round_30"
+    },
+    "facing=east,variant=round_30": {
+      "model": "k8mrp:block/road/markings/round_30",
+      "y": 90
+    },
+    "facing=south,variant=round_30": {
+      "model": "k8mrp:block/road/markings/round_30",
+      "y": 180
+    },
+    "facing=west,variant=round_30": {
+      "model": "k8mrp:block/road/markings/round_30",
+      "y": 270
+    },
+    "facing=north,variant=zigzag": {
+      "model": "k8mrp:block/road/markings/zigzag"
+    },
+    "facing=east,variant=zigzag": {
+      "model": "k8mrp:block/road/markings/zigzag",
+      "y": 90
+    },
+    "facing=south,variant=zigzag": {
+      "model": "k8mrp:block/road/markings/zigzag",
+      "y": 180
+    },
+    "facing=west,variant=zigzag": {
+      "model": "k8mrp:block/road/markings/zigzag",
+      "y": 270
+    },
+    "facing=north,variant=hatching": {
+      "model": "k8mrp:block/road/markings/hatching"
+    },
+    "facing=east,variant=hatching": {
+      "model": "k8mrp:block/road/markings/hatching",
+      "y": 90
+    },
+    "facing=south,variant=hatching": {
+      "model": "k8mrp:block/road/markings/hatching",
+      "y": 180
+    },
+    "facing=west,variant=hatching": {
+      "model": "k8mrp:block/road/markings/hatching",
+      "y": 270
+    },
+    "facing=north,variant=crosswalk_zebra": {
+      "model": "k8mrp:block/road/markings/crosswalk_zebra"
+    },
+    "facing=east,variant=crosswalk_zebra": {
+      "model": "k8mrp:block/road/markings/crosswalk_zebra",
+      "y": 90
+    },
+    "facing=south,variant=crosswalk_zebra": {
+      "model": "k8mrp:block/road/markings/crosswalk_zebra",
+      "y": 180
+    },
+    "facing=west,variant=crosswalk_zebra": {
+      "model": "k8mrp:block/road/markings/crosswalk_zebra",
+      "y": 270
+    }
+  }
+}

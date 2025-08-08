@@ -1,0 +1,25 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "asphalt": "k8mrp:block/road/asphalt"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        1,
+        16
+      ],
+      "faces": {
+        "up": {
+          "texture": "#asphalt"
+        }
+      }
+    }
+  ]
+}

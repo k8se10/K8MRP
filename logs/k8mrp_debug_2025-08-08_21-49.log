@@ -1,0 +1,3 @@
+[ENTRYPOINT] Missing class com.example.k8mrp.K8MRPMod -> /mnt/data/k8mrp_rewrite/src/main/java/com/example/k8mrp/com/example/k8mrp/K8MRPMod.java
+[ENTRYPOINT] Missing class com.example.k8mrp.K8MRPClient -> /mnt/data/k8mrp_rewrite/src/main/java/com/example/k8mrp/com/example/k8mrp/K8MRPClient.java
+[INFO] javac not present; skipped compile-time syntax check.

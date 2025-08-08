@@ -1,0 +1,28 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "marking": "k8mrp:block/road/markings/zigzag"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        0.1,
+        16
+      ],
+      "faces": {
+        "up": {
+          "texture": "#marking"
+        },
+        "down": {
+          "texture": "#marking"
+        }
+      }
+    }
+  ]
+}
