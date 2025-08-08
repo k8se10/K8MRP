@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       project-dir:
-        description: 'Path to the Gradle project (".": repo root)'
+        description: "Path to the Gradle project (".": repo root)"
         required: false
         default: '.'
 
@@ -20,7 +20,7 @@ jobs:
       contents: write
 
     env:
-      LOOM_VERSION: '1.11'
+      LOOM_VERSION: '1.6.+'
       GRADLE_VERSION: '8.10.2'
 
     steps:
