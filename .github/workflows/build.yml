@@ -1,4 +1,4 @@
-name: K8MRP Build (latest Gradle + Loom)
+name: K8MRP Build (Gradle + Loom 1.11)
 
 on:
   push:
@@ -6,167 +6,99 @@ on:
     tags: [ "v*", "alpha*", "beta*" ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
-    inputs:
-      project-dir:
-        description: "Path to Gradle project (e.g., '.' or 'k8mrp_rewrite')"
-        required: false
-        default: "."
-      loom-version:
-        description: "Fabric Loom version ('latest' to auto-resolve)"
-        required: false
-        default: "latest"
-      gradle-version:
-        description: "Gradle version ('latest' to auto-install latest)"
-        required: false
-        default: "latest"
+  workflow_dispatch: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    permissions: { contents: write }
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Detect project dir (or use input)
+      - name: Detect Gradle project dir
         id: detect
         shell: bash
         run: |
           set -e
-          PD="${{ github.event.inputs.project-dir }}"
-          if [ -z "$PD" ] || [ "$PD" = "." ]; then
-            # Prefer root if it has a gradle file
-            if [ -f "./settings.gradle" ] || [ -f "./settings.gradle.kts" ] || [ -f "./gradlew" ]; then
-              echo "PROJECT_DIR=." >> $GITHUB_ENV
-              exit 0
-            fi
-            # Otherwise, find a subfolder with Gradle files
-            found="$(find . -mindepth 2 -maxdepth 4 -type f \( -name settings.gradle -o -name settings.gradle.kts -o -name gradlew \) | head -n1)"
-            if [ -n "$found" ]; then
-              echo "PROJECT_DIR=$(dirname "$found")" >> $GITHUB_ENV
-              exit 0
-            fi
-            echo "::error::Could not detect a Gradle project. Set workflow input 'project-dir'."
-            exit 1
+          if [ -f "./gradlew" ] || [ -f "./settings.gradle" ] || [ -f "./settings.gradle.kts" ]; then
+            echo "PROJECT_DIR=." >> $GITHUB_ENV
           else
-            if [ -d "$PD" ]; then
-              echo "PROJECT_DIR=$PD" >> $GITHUB_ENV
-            else
-              echo "::error::Provided project-dir '$PD' does not exist."
-              exit 1
-            fi
+            found="$(find . -mindepth 2 -maxdepth 4 -type f \( -name gradlew -o -name settings.gradle -o -name settings.gradle.kts \) | head -n1)"
+            [ -n "$found" ] || { echo "::error::No Gradle project found"; exit 1; }
+            echo "PROJECT_DIR=$(dirname "$found")" >> $GITHUB_ENV
           fi
-          echo "Using PROJECT_DIR=${PROJECT_DIR:-unset}"
-
-      - name: Show repo layout
-        run: |
-          echo "PROJECT_DIR=$PROJECT_DIR"
-          tree -L 2 -a || true
+          echo "Using PROJECT_DIR=${PROJECT_DIR:-.}"
 
       - name: Install SDKMAN + latest Gradle
-        id: sdkman
         shell: bash
         run: |
           set -e
           curl -s https://get.sdkman.io | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
-          GV="${{ github.event.inputs.gradle-version }}"
-          if [ "$GV" = "latest" ] || [ -z "$GV" ]; then
-            sdk install gradle
-          else
-            sdk install gradle "$GV"
-          fi
+          sdk install gradle
           gradle --version | sed -n 's/^Gradle \([0-9.]\+\).*/GRADLE_VER=\1/p' >> $GITHUB_ENV
 
-      - name: Bootstrap/refresh Gradle wrapper to latest
+      - name: Generate/refresh Gradle wrapper
         shell: bash
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           set -e
           source "$HOME/.sdkman/bin/sdkman-init.sh"
-          # If wrapper missing or pinned to older, (re)generate to match installed Gradle
-          if [ ! -f "./gradlew" ]; then
-            echo "No wrapper found; generating wrapper for Gradle ${GRADLE_VER}"
-            gradle wrapper --gradle-version "${GRADLE_VER}"
-          else
-            echo "Refreshing wrapper to Gradle ${GRADLE_VER}"
-            chmod +x gradlew
-            ./gradlew wrapper --gradle-version "${GRADLE_VER}"
-          fi
+          if [ ! -f gradlew ]; then gradle wrapper --gradle-version "${GRADLE_VER}"; else chmod +x gradlew; ./gradlew wrapper --gradle-version "${GRADLE_VER}"; fi
           chmod +x gradlew
+
+      - name: Ensure plugin repositories + Loom 1.11
+        shell: bash
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          set -e
+          # 1) Make sure settings.gradle has pluginManagement with Fabric maven + Plugin Portal
+          if [ -f settings.gradle ] || [ -f settings.gradle.kts ]; then
+            FILE=$( [ -f settings.gradle.kts ] && echo settings.gradle.kts || echo settings.gradle )
+            if ! grep -q "pluginManagement" "$FILE"; then
+              cat >> "$FILE" <<'EOF'
+
+pluginManagement {
+  repositories {
+    maven { url = uri("https://maven.fabricmc.net/") }
+    gradlePluginPortal()
+    mavenCentral()
+  }
+}
+EOF
+            fi
+          fi
+          # 2) Force Loom to a released version (1.11)
+          for f in build.gradle build.gradle.kts settings.gradle settings.gradle.kts; do
+            [ -f "$f" ] || continue
+            sed -i -E "s/(id\\s*'fabric-loom'\\s*version\\s*')[^']+'/\\11.11'/g" "$f" || true
+            sed -i -E "s/(id\\(\"fabric-loom\"\\)\\s*version\\s*\")[^\"]+\"/\\11.11\"/g" "$f" || true
+          done
+          echo "Final plugin lines:"
+          grep -R --line-number -E "fabric-loom" || true
 
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v2
-        with:
-          build-root-directory: ${{ env.PROJECT_DIR }}
+        with: { build-root-directory: ${{ env.PROJECT_DIR }} }
 
-      - name: Resolve Fabric Loom version (latest if requested)
-        id: loom
-        shell: bash
-        run: |
-          set -e
-          LV="${{ github.event.inputs.loom-version }}"
-          if [ "$LV" = "latest" ] || [ -z "$LV" ]; then
-            # Try plugin portal; fallback to Fabric maven metadata
-            set +e
-            latest=$(curl -fsSL https://plugins.gradle.org/api/plugins/fabric-loom/versions | jq -r '.[].version' | grep -E '^[0-9]+\.[0-9]+' | head -n1)
-            set -e
-            if [ -z "$latest" ] || [ "$latest" = "null" ]; then
-              latest=$(curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-loom/maven-metadata.xml | sed -n 's:.*<release>\(.*\)</release>.*:\1:p')
-            fi
-            if [ -z "$latest" ]; then
-              echo "::warning::Could not resolve latest Loom version automatically; will not modify build files."
-              echo "LOOM_VERSION=" >> $GITHUB_ENV
-            else
-              echo "Resolved Loom version: $latest"
-              echo "LOOM_VERSION=$latest" >> $GITHUB_ENV
-            fi
-          else
-            echo "LOOM_VERSION=$LV" >> $GITHUB_ENV
-          fi
-
-      - name: (Optional) Bump Loom in build files to requested version
-        if: env.LOOM_VERSION != ''
-        shell: bash
-        working-directory: ${{ env.PROJECT_DIR }}
-        run: |
-          set -e
-          echo "Setting fabric-loom version to ${LOOM_VERSION}"
-          shopt -s nullglob
-          for f in build.gradle build.gradle.kts settings.gradle settings.gradle.kts; do
-            [ -f "$f" ] || continue
-            # Groovy DSL
-            sed -i -E "s/(id\\s*'fabric-loom'\\s*version\\s*')[^']+'/\\1${LOOM_VERSION}'/g" "$f" || true
-            # Kotlin DSL
-            sed -i -E "s/(id\\(\"fabric-loom\"\\)\\s*version\\s*\")[^\"]+\"/\\1${LOOM_VERSION}\"/g" "$f" || true
-          done
-          echo "Resulting plugin lines:"
-          grep -R --line-number -E "fabric-loom" || true
-
-      - name: Set up JDK 17
+      - name: Set up JDK 21 (required by Loom ≥1.9/1.11)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
           cache: gradle
 
-      - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@v3
+      - uses: gradle/actions/setup-gradle@v3
 
-      - name: Show Gradle versions (wrapper vs SDKMAN)
+      - name: Show Gradle versions
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
-          ./gradlew --version
-          source "$HOME/.sdkman/bin/sdkman-init.sh"
-          gradle --version || true
+          ./gradlew --version || true
 
       - name: Build (Fabric Loom)
         working-directory: ${{ env.PROJECT_DIR }}
-        env:
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
+        env: { GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g" }
         run: ./gradlew clean build --stacktrace --no-daemon
 
       - name: Upload mod jars
@@ -177,11 +109,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Create GitHub Release (on tag)
+      - name: Release on tag
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env: { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
