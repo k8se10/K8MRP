@@ -1,4 +1,4 @@
-# K8MRP — Alpha 0.2.1 (D-first: Freecam + LOD + Zones)
+#K8MRP — Alpha 0.2.1 (D-first: Freecam + LOD + Zones)
 
 This drop adds:
 - Freecam controller stub (top-down feel, toggle with F).
