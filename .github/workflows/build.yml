@@ -1,0 +1,90 @@
+name: K8MRP Build
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ "v*", "alpha*", "beta*" ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      project-dir:
+        description: "Path to the Gradle project ('.' if root, e.g. 'k8mrp_rewrite')"
+        required: false
+        default: "."
+
+jobs:
+  build:
+    name: Build (Java 17)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ github.event.inputs.project-dir || '.' }}
+
+    permissions:
+      contents: write  # needed for releasing on tag
+      actions: read
+
+    env:
+      # Tweak if your project needs more/less memory
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx3g -XX:+UseG1GC'"
+      # If your project lives in a subfolder, override via workflow_dispatch input
+      PROJECT_DIR: ${{ github.event.inputs.project-dir || '.' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@v2
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Show Gradle version
+        run: ./gradlew --version
+
+      - name: Build (Fabric Loom)
+        run: ./gradlew clean build --stacktrace --no-daemon
+
+      - name: Collect artifacts
+        id: collect
+        run: |
+          echo "ART_DIR=$PWD/build/libs" >> $GITHUB_OUTPUT
+          ls -al build/libs || true
+
+      - name: Upload mod jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8mrp-mod-jars
+          path: |
+            ${{ steps.collect.outputs.ART_DIR }}/*.jar
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug logs (optional)
+        if: ${{ hashFiles(format('{0}/logs/**/*.log', env.PROJECT_DIR)) != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8mrp-debug-logs
+          path: ${{ env.PROJECT_DIR }}/logs/**/*.log
+          retention-days: 14
+
+      # Auto-create a GitHub Release & attach jars when this is a tag build
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.collect.outputs.ART_DIR }}/*.jar
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
