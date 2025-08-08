@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       project-dir:
-        description: 'Path to the Gradle project (".": repo root)'
+        description: "Path to the Gradle project (".": repo root)"
         required: false
         default: '.'
 
