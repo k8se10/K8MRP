@@ -1,11 +1,10 @@
 plugins {
   id 'java'
-  id 'fabric-loom' version '1.11'
+  id 'fabric-loom' version '1.6-SNAPSHOT'
 }
 version = project.mod_version
 group = project.maven_group
 repositories {
-  mavenLocal()
   maven { url 'https://maven.fabricmc.net/' }
   mavenCentral()
 }
