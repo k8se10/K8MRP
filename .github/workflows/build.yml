@@ -3,15 +3,15 @@ name: K8MRP Build (stable Loom + Gradle)
 on:
   push:
     branches: [ main, master ]
-    tags: [ "v*", "alpha*", "beta*" ]
+    tags: [ 'v*', 'alpha*', 'beta*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
     inputs:
       project-dir:
-        description: "Path to the Gradle project ('.' if repo root)"
+        description: 'Path to the Gradle project (".": repo root)'
         required: false
-        default: "."
+        default: '.'
 
 jobs:
   build:
@@ -20,9 +20,8 @@ jobs:
       contents: write
 
     env:
-      # Known-good pair: Loom 1.11 + Gradle 8.10.2 (JDK 21)
-      LOOM_VERSION: "1.11"
-      GRADLE_VERSION: "8.10.2"
+      LOOM_VERSION: '1.11'
+      GRADLE_VERSION: '8.10.2'
 
     steps:
       - name: Checkout
@@ -31,10 +30,12 @@ jobs:
       - name: Set PROJECT_DIR
         shell: bash
         run: |
-          PD="${{ github.event.inputs.project-dir }}"
-          if [ -z "$PD" ]; then PD="."; fi
-          echo "PROJECT_DIR=$PD" >> "$GITHUB_ENV"
-          echo "Using PROJECT_DIR=$PD"
+          if [ -n "${{ github.event.inputs.project-dir }}" ]; then
+            echo "PROJECT_DIR=${{ github.event.inputs.project-dir }}" >> "$GITHUB_ENV"
+          else
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          fi
+          echo "Using PROJECT_DIR=$PROJECT_DIR"
 
       - name: Show layout
         shell: bash
@@ -56,29 +57,29 @@ jobs:
           if [ -z "$FILE" ] && [ -f "settings.gradle" ]; then FILE="settings.gradle"; fi
           if [ -z "$FILE" ]; then
             echo "No settings.gradle(.kts); creating settings.gradle with pluginManagement."
-            printf '%s\n' \
-'pluginManagement {' \
-'  repositories {' \
-'    maven { url = uri("https://maven.fabricmc.net/") }' \
-'    gradlePluginPortal()' \
-'    mavenCentral()' \
-'  }' \
-'}' \
-'rootProject.name = "K8MRP"' \
-> settings.gradle
+            cat > settings.gradle <<'EOF'
+pluginManagement {
+  repositories {
+    maven { url = uri("https://maven.fabricmc.net/") }
+    gradlePluginPortal()
+    mavenCentral()
+  }
+}
+rootProject.name = "K8MRP"
+EOF
           else
             if ! grep -q "pluginManagement" "$FILE"; then
               echo "Appending pluginManagement block to $FILE"
-              {
-                echo
-                echo 'pluginManagement {'
-                echo '  repositories {'
-                echo '    maven { url = uri("https://maven.fabricmc.net/") }'
-                echo '    gradlePluginPortal()'
-                echo '    mavenCentral()'
-                echo '  }'
-                echo '}'
-              } >> "$FILE"
+              cat >> "$FILE" <<'EOF'
+
+pluginManagement {
+  repositories {
+    maven { url = uri("https://maven.fabricmc.net/") }
+    gradlePluginPortal()
+    mavenCentral()
+  }
+}
+EOF
             fi
           fi
 
@@ -90,9 +91,9 @@ jobs:
           for f in build.gradle build.gradle.kts settings.gradle settings.gradle.kts; do
             [ -f "$f" ] || continue
             # Groovy DSL
-            sed -i -E "s/(id\\s*'fabric-loom'\\s*version\\s*')([^']*)'/\\1${LOOM_VERSION}'/g" "$f" || true
+            sed -i -E "s/(id[[:space:]]*'fabric-loom'[[:space:]]*version[[:space:]]*')[^']*'/\\1${LOOM_VERSION}'/g" "$f" || true
             # Kotlin DSL
-            sed -i -E "s/(id\\(\"fabric-loom\"\\)\\s*version\\s*\")([^\"]+)\"/\\1${LOOM_VERSION}\"/g" "$f" || true
+            sed -i -E "s/(id\\(\"fabric-loom\"\\)[[:space:]]*version[[:space:]]*\")[^\"]*\"/\\1${LOOM_VERSION}\"/g" "$f" || true
           done
           echo "Plugin lines:"
           grep -R --line-number -E "fabric-loom" || true
@@ -134,7 +135,7 @@ jobs:
       - name: Build (Fabric Loom)
         working-directory: ${{ env.PROJECT_DIR }}
         env:
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g
         run: ./gradlew clean build --stacktrace --no-daemon
 
       - name: Upload mod jars
