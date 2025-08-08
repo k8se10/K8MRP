@@ -7,39 +7,30 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
-    inputs:
-      project-dir:
-        description: "Path to the Gradle project ('.' if root, e.g. 'k8mrp_rewrite')"
-        required: false
-        default: "."
 
 jobs:
   build:
-    name: Build (Java 17)
     runs-on: ubuntu-latest
+    env:
+      PROJECT_DIR: k8mrp_rewrite     # <-- set this to your project folder
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx3g -XX:+UseG1GC'"
 
     defaults:
       run:
-        working-directory: ${{ github.event.inputs.project-dir || '.' }}
-
-    permissions:
-      contents: write  # needed for releasing on tag
-      actions: read
-
-    env:
-      # Tweak if your project needs more/less memory
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx3g -XX:+UseG1GC'"
-      # If your project lives in a subfolder, override via workflow_dispatch input
-      PROJECT_DIR: ${{ github.event.inputs.project-dir || '.' }}
+        working-directory: ${{ env.PROJECT_DIR }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Validate wrapper ONLY if it exists, and in the right folder
       - name: Validate Gradle wrapper
+        if: ${{ hashFiles(format('{0}/gradle/wrapper/gradle-wrapper.jar', env.PROJECT_DIR)) != '' }}
         uses: gradle/wrapper-validation-action@v2
+        with:
+          build-root-directory: ${{ env.PROJECT_DIR }}
 
-      - name: Set up JDK 17 (Temurin)
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -52,39 +43,21 @@ jobs:
       - name: Show Gradle version
         run: ./gradlew --version
 
-      - name: Build (Fabric Loom)
+      - name: Build
         run: ./gradlew clean build --stacktrace --no-daemon
-
-      - name: Collect artifacts
-        id: collect
-        run: |
-          echo "ART_DIR=$PWD/build/libs" >> $GITHUB_OUTPUT
-          ls -al build/libs || true
 
       - name: Upload mod jars
         uses: actions/upload-artifact@v4
         with:
           name: k8mrp-mod-jars
-          path: |
-            ${{ steps.collect.outputs.ART_DIR }}/*.jar
+          path: build/libs/*.jar
           if-no-files-found: error
-          retention-days: 30
 
-      - name: Upload debug logs (optional)
-        if: ${{ hashFiles(format('{0}/logs/**/*.log', env.PROJECT_DIR)) != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: k8mrp-debug-logs
-          path: ${{ env.PROJECT_DIR }}/logs/**/*.log
-          retention-days: 14
-
-      # Auto-create a GitHub Release & attach jars when this is a tag build
-      - name: Create GitHub Release
+      - name: Release on tag
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ${{ steps.collect.outputs.ART_DIR }}/*.jar
+          files: build/libs/*.jar
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
