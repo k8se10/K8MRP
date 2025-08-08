@@ -6,25 +6,49 @@ on:
     tags: [ "v*", "alpha*", "beta*" ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      PROJECT_DIR: k8mrp_rewrite     # <-- set this to your project folder
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx3g -XX:+UseG1GC'"
-
-    defaults:
-      run:
-        working-directory: ${{ env.PROJECT_DIR }}
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Validate wrapper ONLY if it exists, and in the right folder
-      - name: Validate Gradle wrapper
+      - name: Show repo layout
+        run: |
+          pwd
+          ls -la
+          echo "----"
+          find . -maxdepth 3 -name gradlew -print
+
+      - name: Detect Gradle project directory
+        id: detect
+        shell: bash
+        run: |
+          set -e
+          # Prefer repo root if it has a gradlew
+          if [ -f "./gradlew" ]; then
+            echo "PROJECT_DIR=." >> $GITHUB_ENV
+            exit 0
+          fi
+          # Otherwise, find the first gradlew in subfolders
+          found="$(find . -mindepth 2 -maxdepth 4 -type f -name gradlew | head -n1)"
+          if [ -n "$found" ]; then
+            dir="$(dirname "$found")"
+            echo "PROJECT_DIR=$dir" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "No Gradle wrapper found. If your project is in a subfolder, commit the wrapper or update the workflow."
+          exit 1
+
+      - name: Echo chosen project dir
+        run: echo "Using PROJECT_DIR=${PROJECT_DIR}"
+
+      - name: Validate Gradle wrapper (if present)
         if: ${{ hashFiles(format('{0}/gradle/wrapper/gradle-wrapper.jar', env.PROJECT_DIR)) != '' }}
         uses: gradle/wrapper-validation-action@v2
         with:
@@ -41,23 +65,28 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Show Gradle version
+        working-directory: ${{ env.PROJECT_DIR }}
         run: ./gradlew --version
 
-      - name: Build
+      - name: Build (Fabric Loom)
+        working-directory: ${{ env.PROJECT_DIR }}
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx3g -XX:+UseG1GC'"
         run: ./gradlew clean build --stacktrace --no-daemon
 
       - name: Upload mod jars
         uses: actions/upload-artifact@v4
         with:
           name: k8mrp-mod-jars
-          path: build/libs/*.jar
+          path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           if-no-files-found: error
+          retention-days: 30
 
-      - name: Release on tag
+      - name: Create GitHub Release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/*.jar
+          files: ${{ env.PROJECT_DIR }}/build/libs/*.jar
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
